@@ -3,7 +3,7 @@ use std::io::BufRead;
 
 use http::{Method, Request, Uri};
 
-fn parse_request(reader: &mut dyn BufRead) -> Result<Request<String>, Box<dyn Error>> {
+pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<String>, Box<dyn Error>> {
     let mut lines = reader.lines();
     let request_line = lines.next().ok_or("Empty request")??;
     let mut request_line_tokens = request_line.split(' ');
