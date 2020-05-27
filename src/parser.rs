@@ -38,12 +38,12 @@ fn parse_headers(
     Ok(builder)
 }
 
-pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<String>, Box<dyn Error>> {
+pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<()>, Box<dyn Error>> {
     let mut lines: Lines<&mut dyn BufRead> = reader.lines();
     let builder = parse_request_line(&mut lines)?;
     let builder = parse_headers(&mut lines, builder)?;
 
-    let req = builder.body("".to_owned())?;
+    let req = builder.body(())?;
     Ok(req)
 }
 
@@ -61,10 +61,10 @@ mod tests {
     fn parse_request_with_no_headers_no_body() -> Result<(), Box<dyn Error>> {
         let raw_request = "GET /foo/bar HTTP/3.0".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
-        let expected: Request<String> = Request::builder()
+        let expected: Request<()> = Request::builder()
             .method(Method::GET)
             .uri("/foo/bar".as_bytes())
-            .body("".to_owned())?;
+            .body(())?;
         assert_eq!(got.method(), expected.method());
         assert_eq!(got.uri(), expected.uri());
         Ok(())
@@ -74,12 +74,12 @@ mod tests {
     fn parse_request_with_headers_no_body() -> Result<(), Box<dyn Error>> {
         let raw_request = "GET /foo/bar HTTP/3.0\r\nfoo: bar\r\nfizz: buzz\r\n".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
-        let expected: Request<String> = Request::builder()
+        let expected: Request<()> = Request::builder()
             .method(Method::GET)
             .uri("/foo/bar".as_bytes())
             .header("foo", "bar")
             .header("fizz", "buzz")
-            .body("".to_owned())?;
+            .body(())?;
         assert_eq!(got.method(), expected.method());
         assert_eq!(got.uri(), expected.uri());
 
