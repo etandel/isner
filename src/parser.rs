@@ -2,20 +2,15 @@ use std::error::Error;
 use std::io::{BufRead, Lines};
 
 use http::request::Builder;
-use http::{Method, Request, Uri};
+use http::Request;
 
 fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder, Box<dyn Error>> {
     let request_line = lines.next().ok_or("Empty request")??;
     let mut request_line_tokens = request_line.split(' ');
     let method = request_line_tokens.next().ok_or("Missing method")?;
-    let path = request_line_tokens
-        .next()
-        .ok_or("Missing request path")?
-        .parse::<Uri>()?;
+    let path = request_line_tokens.next().ok_or("Missing request path")?;
 
-    Ok(Request::builder()
-        .method(method.parse::<Method>()?)
-        .uri(path))
+    Ok(Request::builder().method(method).uri(path))
 }
 
 fn parse_headers(
