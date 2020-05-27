@@ -1,10 +1,10 @@
 use std::error::Error;
-use std::io::BufRead;
+use std::io::{BufRead, Lines};
 
 use http::{Method, Request, Uri};
+use http::request::Builder;
 
-pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<String>, Box<dyn Error>> {
-    let mut lines = reader.lines();
+fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder, Box<dyn Error>> {
     let request_line = lines.next().ok_or("Empty request")??;
     let mut request_line_tokens = request_line.split(' ');
     let method = request_line_tokens.next().ok_or("Missing method")?;
@@ -13,10 +13,17 @@ pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<String>, Box<dy
         .ok_or("Missing request path")?
         .parse::<Uri>()?;
 
-    let req = Request::builder()
+    Ok(Request::builder()
         .method(method.parse::<Method>()?)
         .uri(path)
-        .body("".to_owned())?;
+    )
+
+}
+
+pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<String>, Box<dyn Error>> {
+    let mut lines: Lines<&mut dyn BufRead> = reader.lines();
+    let builder = parse_request_line(&mut lines)?;
+    let req = builder.body("".to_owned())?;
 
     Ok(req)
 }
