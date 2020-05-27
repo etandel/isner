@@ -31,7 +31,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn read_request_with_no_headers_no_body()  -> Result<(), Box<dyn Error>>{
+    fn parse_request_with_no_headers_no_body()  -> Result<(), Box<dyn Error>>{
         let raw_request = "GET /foo/bar HTTP/3.0".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
         let expected: Request<String> = Request::builder()
@@ -46,14 +46,14 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn read_empty_request() {
+    fn parse_empty_request() {
         let raw_request = "".as_bytes();
         parse_request(&mut BufReader::new(raw_request)).unwrap();
     }
 
     #[test]
     #[should_panic]
-    fn read_invalid_method() {
+    fn parse_invalid_method() {
         let raw_request = "&&& /foo/bar".as_bytes();
         parse_request(&mut BufReader::new(raw_request)).unwrap();
     }
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn read_missing_path() {
+    fn parse_missing_path() {
         let raw_request = "GET ".as_bytes();
         parse_request(&mut BufReader::new(raw_request)).unwrap();
     }
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn read_invalid_path() {
+    fn parse_invalid_path() {
         let raw_request = "GET \\".as_bytes();
         parse_request(&mut BufReader::new(raw_request)).unwrap();
     }
