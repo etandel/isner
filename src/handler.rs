@@ -42,11 +42,32 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box
     Ok(())
 }
 
+pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
+    let response = get_response(reader);
+    write_response(&response, writer)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::io;
     use std::io::BufReader;
 
     use super::*;
+
+    struct ErrWriter();
+    impl Write for ErrWriter {
+        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::Other, "always fails"))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::new(io::ErrorKind::Other, "always fails"))
+        }
+    }
+
+    fn mock_reader(raw_request: &str) -> BufReader<&[u8]> {
+        BufReader::new(raw_request.as_bytes())
+    }
 
     #[test]
     fn handle_request_ok() -> Result<(), Box<dyn Error>> {
@@ -65,9 +86,14 @@ mod tests {
     }
 
     #[test]
+    fn get_response_ok() {
+        let got = get_response(&mut mock_reader("GET / HTTP/1.0\r\n\r\n"));
+        assert_eq!(got.status(), 200);
+    }
+
+    #[test]
     fn get_response_with_parse_error() {
-        let raw_request = "".as_bytes();
-        let got = get_response(&mut BufReader::new(raw_request));
+        let got = get_response(&mut mock_reader(""));
         assert_eq!(got.status(), 400);
     }
 
@@ -84,18 +110,6 @@ mod tests {
         Ok(())
     }
 
-    use std::io;
-    struct ErrWriter();
-    impl Write for ErrWriter {
-        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
-            Err(io::Error::new(io::ErrorKind::Other, "always fails"))
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Err(io::Error::new(io::ErrorKind::Other, "always fails"))
-        }
-    }
-
     #[test]
     fn write_response_err() -> Result<(), Box<dyn Error>> {
         let resp = Response::builder().status(200).body(())?;
@@ -103,5 +117,30 @@ mod tests {
         let got = write_response(&resp, &mut writer);
         assert!(got.is_err(), "Error expected");
         Ok(())
+    }
+
+    #[test]
+    fn handle_ok() -> Result<(), Box<dyn Error>> {
+        let raw_request = "GET / HTTP/1.0\r\n\r\n";
+
+        let mut writer = Vec::new();
+        handle(&mut mock_reader(&raw_request), &mut writer)?;
+        let got = String::from_utf8(writer)?;
+
+        assert_eq!(
+            &got,
+            "200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn handle_write_err() {
+        let raw_request = "GET / HTTP/1.0\r\n\r\n";
+
+        let mut writer = ErrWriter();
+        let got = handle(&mut mock_reader(&raw_request), &mut writer);
+        assert!(got.is_err(), "Error expected");
     }
 }
