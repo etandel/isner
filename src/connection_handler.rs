@@ -4,6 +4,7 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 
 use http::Response;
+use log::{info, debug};
 
 use crate::http_handler::handle;
 
@@ -18,16 +19,16 @@ fn uber_handle_stream(stream: io::Result<TcpStream>) {
     match stream {
         Ok(stream) => {
             let addr = stream.peer_addr().unwrap();
-            eprintln!("Accepted connection: {}", addr);
+            debug!("Accepted connection: {}", addr);
 
             let res = handle_stream(stream);
             match res {
-                Ok(response) => eprintln!("{} {}", addr, response.status()),
-                Err(e) => eprintln!("An error happened while handling request {}", e),
+                Ok(response) => info!("{} {}", addr, response.status()),
+                Err(e) => info!("An error happened while handling request {}", e),
             }
         }
         Err(e) => {
-            eprintln!("Connection failed: {}", e);
+            info!("Connection failed: {}", e);
         }
     }
 }
