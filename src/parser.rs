@@ -2,7 +2,8 @@ use std::error::Error;
 use std::io::{BufRead, Lines};
 
 use http::request::Builder;
-use http::Request;
+
+type Request = http::Request<()>;
 
 fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder, Box<dyn Error>> {
     let request_line = lines.next().ok_or("Empty request")??;
@@ -33,7 +34,7 @@ fn parse_headers(
     Ok(builder)
 }
 
-pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request<()>, Box<dyn Error>> {
+pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request, Box<dyn Error>> {
     let mut lines: Lines<&mut dyn BufRead> = reader.lines();
     let builder = parse_request_line(&mut lines)?;
     let builder = parse_headers(&mut lines, builder)?;
@@ -48,7 +49,6 @@ mod tests {
 
     use core::convert::TryInto;
     use http::method::Method;
-    use http::request::Request;
 
     use super::*;
 
@@ -56,7 +56,7 @@ mod tests {
     fn parse_request_with_no_headers_no_body() -> Result<(), Box<dyn Error>> {
         let raw_request = "GET /foo/bar HTTP/3.0".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
-        let expected: Request<()> = Request::builder()
+        let expected: Request = Request::builder()
             .method(Method::GET)
             .uri("/foo/bar".as_bytes())
             .body(())?;
@@ -69,7 +69,7 @@ mod tests {
     fn parse_request_with_headers_no_body() -> Result<(), Box<dyn Error>> {
         let raw_request = "GET /foo/bar HTTP/3.0\r\nfoo: bar\r\nfizz: buzz\r\n".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
-        let expected: Request<()> = Request::builder()
+        let expected: Request = Request::builder()
             .method(Method::GET)
             .uri("/foo/bar".as_bytes())
             .header("foo", "bar")
