@@ -1,6 +1,6 @@
 [package]
-name = "rust-http-server"
-version = "0.1.0"
+name = "isner"
+version = "0.0.1"
 authors = ["Elias Tandel <elias.tandel@stone.com.br>"]
 edition = "2018"
 

@@ -5,14 +5,14 @@ use clap::{App, Arg};
 use fehler::throws;
 use threadpool::ThreadPool;
 
-use rust_http_server::connection_handler::run;
+use isner::connection_handler::run;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: &str = "8000";
 const DEFAULT_CONCURRENCY: &str = "10";
 
 fn build_args<'a>() -> App<'a, 'a> {
-    App::new("rust_http_server")
+    App::new("isner")
         .version("0.0.1")
         .author("Elias Tandel <elias.tandel@gmail.com>")
         .about("Simple file server in rust")
