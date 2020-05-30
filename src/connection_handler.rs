@@ -2,16 +2,17 @@ use std::io;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
-use anyhow::Result;
-use http::Response;
+use anyhow::Error;
+use fehler::throws;
 use log::{debug, info};
 
-use crate::http_handler::handle;
+use crate::http_handler::{handle, Response};
 
-fn handle_stream(stream: TcpStream) -> Result<Response<()>> {
+#[throws]
+fn handle_stream(stream: TcpStream) -> Response {
     let mut out = stream.try_clone()?;
     let mut reader = io::BufReader::new(stream);
-    handle(&mut reader, &mut out)
+    handle(&mut reader, &mut out)?
 }
 
 fn uber_handle_stream(stream: io::Result<TcpStream>) {

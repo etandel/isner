@@ -1,12 +1,12 @@
 use std::io::{BufRead, Lines};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Error};
+use fehler::throws;
 use http::request::Builder;
-use thiserror::Error;
 
 pub type Request = http::Request<()>;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum ParseError {
     #[error("Empty request")]
     EmptyRequest,
@@ -22,7 +22,8 @@ pub enum ParseError {
     InvalidRequest,
 }
 
-fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder> {
+#[throws]
+fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Builder {
     let request_line = lines.next().context(ParseError::EmptyRequest)??;
     let mut request_line_tokens = request_line.split(' ');
     let method = request_line_tokens
@@ -32,10 +33,11 @@ fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder> {
         .next()
         .context(ParseError::MissingRequestPath)?;
 
-    Ok(Request::builder().method(method).uri(path))
+    Request::builder().method(method).uri(path)
 }
 
-fn parse_headers(lines: &mut Lines<&mut dyn BufRead>, builder: Builder) -> Result<Builder> {
+#[throws]
+fn parse_headers(lines: &mut Lines<&mut dyn BufRead>, builder: Builder) -> Builder {
     let mut builder = builder;
     for header_line_result in lines {
         let header_line = header_line_result?;
@@ -51,16 +53,16 @@ fn parse_headers(lines: &mut Lines<&mut dyn BufRead>, builder: Builder) -> Resul
         builder = builder.header(key, value);
     }
 
-    Ok(builder)
+    builder
 }
 
-pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request> {
+#[throws]
+pub fn parse_request(reader: &mut dyn BufRead) -> Request {
     let mut lines: Lines<&mut dyn BufRead> = reader.lines();
     let builder = parse_request_line(&mut lines)?;
     let builder = parse_headers(&mut lines, builder)?;
 
-    let req = builder.body(()).context(ParseError::InvalidRequest)?;
-    Ok(req)
+    builder.body(()).context(ParseError::InvalidRequest)?
 }
 
 #[cfg(test)]
@@ -73,7 +75,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_request_with_no_headers_no_body() -> Result<()> {
+    #[throws]
+    fn parse_request_with_no_headers_no_body() {
         let raw_request = "GET /foo/bar HTTP/3.0".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
         let expected: Request = Request::builder()
@@ -82,11 +85,11 @@ mod tests {
             .body(())?;
         assert_eq!(got.method(), expected.method());
         assert_eq!(got.uri(), expected.uri());
-        Ok(())
     }
 
     #[test]
-    fn parse_request_with_headers_no_body() -> Result<()> {
+    #[throws]
+    fn parse_request_with_headers_no_body() {
         let raw_request = "GET /foo/bar HTTP/3.0\r\nfoo: bar\r\nfizz: buzz\r\n".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
         let expected: Request = Request::builder()
@@ -101,7 +104,6 @@ mod tests {
         let headers = got.headers();
         assert_eq!(headers.get("foo"), Some(&("bar".try_into()?)));
         assert_eq!(headers.get("fizz"), Some(&("buzz".try_into()?)));
-        Ok(())
     }
 
     #[test]
