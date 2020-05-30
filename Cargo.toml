@@ -6,7 +6,7 @@ edition = "2018"
 description = "A static HTTP server that aims to be minimalistic and fast."
 readme = "README.md"
 repository = "https://github.com/etandel/isner"
-license = "MIT or Apache-2.0"
+license = "MIT OR Apache-2.0"
 keywords = ["HTTP", "web", "server"]
 categories = ["network-programming"]
 
