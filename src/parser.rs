@@ -1,15 +1,15 @@
-use std::error::Error;
 use std::io::{BufRead, Lines};
 
+use anyhow::{anyhow, Result};
 use http::request::Builder;
 
 type Request = http::Request<()>;
 
-fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder, Box<dyn Error>> {
-    let request_line = lines.next().ok_or("Empty request")??;
+fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder> {
+    let request_line = lines.next().ok_or_else(|| anyhow!("Empty request"))??;
     let mut request_line_tokens = request_line.split(' ');
-    let method = request_line_tokens.next().ok_or("Missing method")?;
-    let path = request_line_tokens.next().ok_or("Missing request path")?;
+    let method = request_line_tokens.next().ok_or_else(|| anyhow!("Missing method"))?;
+    let path = request_line_tokens.next().ok_or_else(|| anyhow!("Missing request path"))?;
 
     Ok(Request::builder().method(method).uri(path))
 }
@@ -17,7 +17,7 @@ fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder, Bo
 fn parse_headers(
     lines: &mut Lines<&mut dyn BufRead>,
     builder: Builder,
-) -> Result<Builder, Box<dyn Error>> {
+) -> Result<Builder> {
     let mut builder = builder;
     for header_line_result in lines {
         let header_line = header_line_result?;
@@ -26,15 +26,15 @@ fn parse_headers(
         }
 
         let mut header_tokens = header_line.splitn(2, ": ");
-        let key = header_tokens.next().ok_or("Missing header key")?;
-        let value = header_tokens.next().ok_or("Missing header value")?;
+        let key = header_tokens.next().ok_or_else(|| anyhow!("Missing header key"))?;
+        let value = header_tokens.next().ok_or_else(|| anyhow!("Missing header value"))?;
         builder = builder.header(key, value);
     }
 
     Ok(builder)
 }
 
-pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request, Box<dyn Error>> {
+pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request> {
     let mut lines: Lines<&mut dyn BufRead> = reader.lines();
     let builder = parse_request_line(&mut lines)?;
     let builder = parse_headers(&mut lines, builder)?;
@@ -53,7 +53,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_request_with_no_headers_no_body() -> Result<(), Box<dyn Error>> {
+    fn parse_request_with_no_headers_no_body() -> Result<()> {
         let raw_request = "GET /foo/bar HTTP/3.0".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
         let expected: Request = Request::builder()
@@ -66,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_request_with_headers_no_body() -> Result<(), Box<dyn Error>> {
+    fn parse_request_with_headers_no_body() -> Result<()> {
         let raw_request = "GET /foo/bar HTTP/3.0\r\nfoo: bar\r\nfizz: buzz\r\n".as_bytes();
         let got = parse_request(&mut BufReader::new(raw_request))?;
         let expected: Request = Request::builder()

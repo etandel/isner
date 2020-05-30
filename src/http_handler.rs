@@ -1,9 +1,10 @@
-use std::error::Error;
 use std::io::{BufRead, Write};
 
 use http::method::Method;
 use http::request::Request;
 use http::response::Response;
+
+use anyhow::{Result};
 
 use super::parser::parse_request;
 
@@ -28,7 +29,7 @@ fn get_response(reader: &mut dyn BufRead) -> Response<()> {
     }
 }
 
-fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
+fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<()> {
     write!(
         writer,
         "HTTP/1.1 {} {}\r\n",
@@ -45,7 +46,7 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box
 pub fn handle(
     reader: &mut dyn BufRead,
     writer: &mut dyn Write,
-) -> Result<Response<()>, Box<dyn Error>> {
+) -> Result<Response<()>> {
     let response = get_response(reader);
     write_response(&response, writer)?;
     Ok(response)
@@ -74,7 +75,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_request_ok() -> Result<(), Box<dyn Error>> {
+    fn handle_request_ok() -> Result<()> {
         let request = Request::builder().method(Method::GET).uri("/").body(())?;
         let got = handle_request(&request);
         assert_eq!(got.status(), 200);
@@ -82,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_request_method_not_allowed() -> Result<(), Box<dyn Error>> {
+    fn handle_request_method_not_allowed() -> Result<()> {
         let request = Request::builder().method(Method::POST).uri("/").body(())?;
         let got = handle_request(&request);
         assert_eq!(got.status(), 405);
@@ -102,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn write_response_ok() -> Result<(), Box<dyn Error>> {
+    fn write_response_ok() -> Result<()> {
         let resp = Response::builder().status(200).body(())?;
         let mut writer = Vec::new();
         write_response(&resp, &mut writer)?;
@@ -115,7 +116,7 @@ mod tests {
     }
 
     #[test]
-    fn write_response_err() -> Result<(), Box<dyn Error>> {
+    fn write_response_err() -> Result<()> {
         let resp = Response::builder().status(200).body(())?;
         let mut writer = ErrWriter();
         let got = write_response(&resp, &mut writer);
@@ -124,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_ok() -> Result<(), Box<dyn Error>> {
+    fn handle_ok() -> Result<()> {
         let raw_request = "GET / HTTP/1.0\r\n\r\n";
 
         let mut writer = Vec::new();

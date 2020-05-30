@@ -1,14 +1,14 @@
-use std::error::Error;
 use std::io;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
+use anyhow::{Result};
 use http::Response;
 use log::{debug, info};
 
 use crate::http_handler::handle;
 
-fn handle_stream(stream: TcpStream) -> Result<Response<()>, Box<dyn Error>> {
+fn handle_stream(stream: TcpStream) -> Result<Response<()>> {
     let mut out = stream.try_clone()?;
     let mut reader = io::BufReader::new(stream);
     handle(&mut reader, &mut out)
