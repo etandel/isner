@@ -42,7 +42,10 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box
     Ok(())
 }
 
-pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<Response<()>, Box<dyn Error>> {
+pub fn handle(
+    reader: &mut dyn BufRead,
+    writer: &mut dyn Write,
+) -> Result<Response<()>, Box<dyn Error>> {
     let response = get_response(reader);
     write_response(&response, writer)?;
     Ok(response)
