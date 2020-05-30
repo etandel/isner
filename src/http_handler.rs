@@ -42,9 +42,10 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box
     Ok(())
 }
 
-pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
+pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<Response<()>, Box<dyn Error>> {
     let response = get_response(reader);
-    write_response(&response, writer)
+    write_response(&response, writer)?;
+    Ok(response)
 }
 
 #[cfg(test)]
@@ -124,13 +125,14 @@ mod tests {
         let raw_request = "GET / HTTP/1.0\r\n\r\n";
 
         let mut writer = Vec::new();
-        handle(&mut mock_reader(&raw_request), &mut writer)?;
+        let resp = handle(&mut mock_reader(&raw_request), &mut writer)?;
         let got = String::from_utf8(writer)?;
 
         assert_eq!(
             &got,
             "200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
         );
+        assert_eq!(resp.status(), 200);
 
         Ok(())
     }
