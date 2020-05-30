@@ -31,7 +31,7 @@ fn get_response(reader: &mut dyn BufRead) -> Response<()> {
 fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
     write!(
         writer,
-        "{} {}\r\n",
+        "HTTP/1.1 {} {}\r\n",
         resp.status().as_str(),
         resp.status().canonical_reason().unwrap_or("UNKNOWN")
     )?;
@@ -106,7 +106,7 @@ mod tests {
         let got = String::from_utf8(writer)?;
         assert_eq!(
             &got,
-            "200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
+            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
         );
         Ok(())
     }
@@ -130,7 +130,7 @@ mod tests {
 
         assert_eq!(
             &got,
-            "200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
+            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
         );
         assert_eq!(resp.status(), 200);
 
