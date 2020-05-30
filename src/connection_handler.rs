@@ -2,7 +2,7 @@ use std::io;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
-use anyhow::{Result};
+use anyhow::Result;
 use http::Response;
 use log::{debug, info};
 

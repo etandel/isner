@@ -1,14 +1,14 @@
 use std::io::{BufRead, Write};
 
 use http::method::Method;
-use http::request::Request;
-use http::response::Response;
 
-use anyhow::{Result};
+use anyhow::Result;
 
-use super::parser::parse_request;
+use super::parser::{Request, parse_request};
 
-fn handle_request(req: &Request<()>) -> Response<()> {
+type Response = http::response::Response<()>;
+
+fn handle_request(req: &Request) -> Response {
     let builder = Response::builder();
 
     builder
@@ -21,7 +21,7 @@ fn handle_request(req: &Request<()>) -> Response<()> {
         .unwrap()
 }
 
-fn get_response(reader: &mut dyn BufRead) -> Response<()> {
+fn get_response(reader: &mut dyn BufRead) -> Response {
     let res = parse_request(reader);
     match res {
         Ok(req) => handle_request(&req),
@@ -29,7 +29,7 @@ fn get_response(reader: &mut dyn BufRead) -> Response<()> {
     }
 }
 
-fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<()> {
+fn write_response(resp: &Response, writer: &mut dyn Write) -> Result<()> {
     write!(
         writer,
         "HTTP/1.1 {} {}\r\n",
@@ -46,7 +46,7 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<()> {
 pub fn handle(
     reader: &mut dyn BufRead,
     writer: &mut dyn Write,
-) -> Result<Response<()>> {
+) -> Result<Response> {
     let response = get_response(reader);
     write_response(&response, writer)?;
     Ok(response)

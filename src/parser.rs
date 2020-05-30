@@ -3,7 +3,7 @@ use std::io::{BufRead, Lines};
 use anyhow::{anyhow, Result};
 use http::request::Builder;
 
-type Request = http::Request<()>;
+pub type Request = http::Request<()>;
 
 fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder> {
     let request_line = lines.next().ok_or_else(|| anyhow!("Empty request"))??;
