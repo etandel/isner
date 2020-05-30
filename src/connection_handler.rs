@@ -33,8 +33,12 @@ fn uber_handle_stream(stream: io::Result<TcpStream>) {
     }
 }
 
-pub fn run(listener: TcpListener) {
-    let pool = ThreadPool::new(10); // TODO dehardcode
+pub fn run(listener: TcpListener, pool: ThreadPool) {
+    info!(
+        "Running server on {} with {} threads",
+        listener.local_addr().unwrap(),
+        pool.max_count()
+    );
     for stream in listener.incoming() {
         pool.execute(move || {
             uber_handle_stream(stream);
