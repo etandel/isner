@@ -8,16 +8,17 @@ pub type Request = http::Request<()>;
 fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder> {
     let request_line = lines.next().ok_or_else(|| anyhow!("Empty request"))??;
     let mut request_line_tokens = request_line.split(' ');
-    let method = request_line_tokens.next().ok_or_else(|| anyhow!("Missing method"))?;
-    let path = request_line_tokens.next().ok_or_else(|| anyhow!("Missing request path"))?;
+    let method = request_line_tokens
+        .next()
+        .ok_or_else(|| anyhow!("Missing method"))?;
+    let path = request_line_tokens
+        .next()
+        .ok_or_else(|| anyhow!("Missing request path"))?;
 
     Ok(Request::builder().method(method).uri(path))
 }
 
-fn parse_headers(
-    lines: &mut Lines<&mut dyn BufRead>,
-    builder: Builder,
-) -> Result<Builder> {
+fn parse_headers(lines: &mut Lines<&mut dyn BufRead>, builder: Builder) -> Result<Builder> {
     let mut builder = builder;
     for header_line_result in lines {
         let header_line = header_line_result?;
@@ -26,8 +27,12 @@ fn parse_headers(
         }
 
         let mut header_tokens = header_line.splitn(2, ": ");
-        let key = header_tokens.next().ok_or_else(|| anyhow!("Missing header key"))?;
-        let value = header_tokens.next().ok_or_else(|| anyhow!("Missing header value"))?;
+        let key = header_tokens
+            .next()
+            .ok_or_else(|| anyhow!("Missing header key"))?;
+        let value = header_tokens
+            .next()
+            .ok_or_else(|| anyhow!("Missing header value"))?;
         builder = builder.header(key, value);
     }
 

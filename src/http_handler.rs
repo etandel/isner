@@ -4,7 +4,7 @@ use http::method::Method;
 
 use anyhow::Result;
 
-use super::parser::{Request, parse_request};
+use super::parser::{parse_request, Request};
 
 type Response = http::response::Response<()>;
 
@@ -43,10 +43,7 @@ fn write_response(resp: &Response, writer: &mut dyn Write) -> Result<()> {
     Ok(())
 }
 
-pub fn handle(
-    reader: &mut dyn BufRead,
-    writer: &mut dyn Write,
-) -> Result<Response> {
+pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Result<Response> {
     let response = get_response(reader);
     write_response(&response, writer)?;
     Ok(response)
