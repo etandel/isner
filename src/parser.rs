@@ -1,19 +1,36 @@
 use std::io::{BufRead, Lines};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Context, Result};
 use http::request::Builder;
+use thiserror::Error;
 
 pub type Request = http::Request<()>;
 
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error("Empty request")]
+    EmptyRequest,
+    #[error("Missing method")]
+    MissingMethod,
+    #[error("Missing path")]
+    MissingRequestPath,
+    #[error("Missing header key")]
+    MissingHeaderKey,
+    #[error("Missing header value")]
+    MissingHeaderValue,
+    #[error("Invalid Request")]
+    InvalidRequest,
+}
+
 fn parse_request_line(lines: &mut Lines<&mut dyn BufRead>) -> Result<Builder> {
-    let request_line = lines.next().ok_or_else(|| anyhow!("Empty request"))??;
+    let request_line = lines.next().context(ParseError::EmptyRequest)??;
     let mut request_line_tokens = request_line.split(' ');
     let method = request_line_tokens
         .next()
-        .ok_or_else(|| anyhow!("Missing method"))?;
+        .context(ParseError::MissingMethod)?;
     let path = request_line_tokens
         .next()
-        .ok_or_else(|| anyhow!("Missing request path"))?;
+        .context(ParseError::MissingRequestPath)?;
 
     Ok(Request::builder().method(method).uri(path))
 }
@@ -27,12 +44,10 @@ fn parse_headers(lines: &mut Lines<&mut dyn BufRead>, builder: Builder) -> Resul
         }
 
         let mut header_tokens = header_line.splitn(2, ": ");
-        let key = header_tokens
-            .next()
-            .ok_or_else(|| anyhow!("Missing header key"))?;
+        let key = header_tokens.next().context(ParseError::MissingHeaderKey)?;
         let value = header_tokens
             .next()
-            .ok_or_else(|| anyhow!("Missing header value"))?;
+            .context(ParseError::MissingHeaderValue)?;
         builder = builder.header(key, value);
     }
 
@@ -44,7 +59,7 @@ pub fn parse_request(reader: &mut dyn BufRead) -> Result<Request> {
     let builder = parse_request_line(&mut lines)?;
     let builder = parse_headers(&mut lines, builder)?;
 
-    let req = builder.body(())?;
+    let req = builder.body(()).context(ParseError::InvalidRequest)?;
     Ok(req)
 }
 
