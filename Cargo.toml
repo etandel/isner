@@ -3,6 +3,12 @@ name = "isner"
 version = "0.0.1"
 authors = ["Elias Tandel <elias.tandel@stone.com.br>"]
 edition = "2018"
+description = "A static HTTP server that aims to be minimalistic and fast."
+readme = "README.md"
+repository = "https://github.com/etandel/isner"
+license = "MIT or Apache-2.0"
+keywords = ["HTTP", "web", "server"]
+categories = ["network-programming"]
 
 [profile.release]
 opt-level = 3
