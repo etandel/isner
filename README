@@ -1,0 +1,5 @@
+## Isner
+
+Isner is a static HTTP server written in Rust that aims to be minimalistic and fast.
+
+This is a side-project for exploring the Rust language and ecosystem and **SHOULD NOT** be used in a production environment.
