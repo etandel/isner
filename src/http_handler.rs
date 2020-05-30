@@ -1,13 +1,14 @@
-use std::error::Error;
 use std::io::{BufRead, Write};
 
+use anyhow::Error;
+use fehler::throws;
 use http::method::Method;
-use http::request::Request;
-use http::response::Response;
 
-use super::parser::parse_request;
+use super::parser::{parse_request, Request};
 
-fn handle_request(req: &Request<()>) -> Response<()> {
+pub type Response = http::response::Response<()>;
+
+fn handle_request(req: &Request) -> Response {
     let builder = Response::builder();
 
     builder
@@ -20,7 +21,7 @@ fn handle_request(req: &Request<()>) -> Response<()> {
         .unwrap()
 }
 
-fn get_response(reader: &mut dyn BufRead) -> Response<()> {
+fn get_response(reader: &mut dyn BufRead) -> Response {
     let res = parse_request(reader);
     match res {
         Ok(req) => handle_request(&req),
@@ -28,7 +29,8 @@ fn get_response(reader: &mut dyn BufRead) -> Response<()> {
     }
 }
 
-fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
+#[throws]
+fn write_response(resp: &Response, writer: &mut dyn Write) {
     write!(
         writer,
         "HTTP/1.1 {} {}\r\n",
@@ -39,16 +41,13 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box
     write!(writer, "Content-type: text/plain\r\n")?;
     write!(writer, "Content-length: 0\r\n")?;
     write!(writer, "\r\n")?;
-    Ok(())
 }
 
-pub fn handle(
-    reader: &mut dyn BufRead,
-    writer: &mut dyn Write,
-) -> Result<Response<()>, Box<dyn Error>> {
+#[throws]
+pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Response {
     let response = get_response(reader);
     write_response(&response, writer)?;
-    Ok(response)
+    response
 }
 
 #[cfg(test)]
@@ -74,19 +73,19 @@ mod tests {
     }
 
     #[test]
-    fn handle_request_ok() -> Result<(), Box<dyn Error>> {
+    #[throws]
+    fn handle_request_ok() {
         let request = Request::builder().method(Method::GET).uri("/").body(())?;
         let got = handle_request(&request);
         assert_eq!(got.status(), 200);
-        Ok(())
     }
 
     #[test]
-    fn handle_request_method_not_allowed() -> Result<(), Box<dyn Error>> {
+    #[throws]
+    fn handle_request_method_not_allowed() {
         let request = Request::builder().method(Method::POST).uri("/").body(())?;
         let got = handle_request(&request);
         assert_eq!(got.status(), 405);
-        Ok(())
     }
 
     #[test]
@@ -102,7 +101,8 @@ mod tests {
     }
 
     #[test]
-    fn write_response_ok() -> Result<(), Box<dyn Error>> {
+    #[throws]
+    fn write_response_ok() {
         let resp = Response::builder().status(200).body(())?;
         let mut writer = Vec::new();
         write_response(&resp, &mut writer)?;
@@ -111,20 +111,20 @@ mod tests {
             &got,
             "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
         );
-        Ok(())
     }
 
     #[test]
-    fn write_response_err() -> Result<(), Box<dyn Error>> {
+    #[throws]
+    fn write_response_err() {
         let resp = Response::builder().status(200).body(())?;
         let mut writer = ErrWriter();
         let got = write_response(&resp, &mut writer);
         assert!(got.is_err(), "Error expected");
-        Ok(())
     }
 
     #[test]
-    fn handle_ok() -> Result<(), Box<dyn Error>> {
+    #[throws]
+    fn handle_ok() {
         let raw_request = "GET / HTTP/1.0\r\n\r\n";
 
         let mut writer = Vec::new();
@@ -136,8 +136,6 @@ mod tests {
             "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
         );
         assert_eq!(resp.status(), 200);
-
-        Ok(())
     }
 
     #[test]
