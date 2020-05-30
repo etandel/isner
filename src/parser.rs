@@ -18,7 +18,7 @@ fn parse_headers(
     builder: Builder,
 ) -> Result<Builder, Box<dyn Error>> {
     let mut builder = builder;
-    while let Some(header_line_result) = lines.next() {
+    for header_line_result in lines {
         let header_line = header_line_result?;
         if header_line == "" {
             break;

@@ -1,7 +1,5 @@
 use std::net::TcpListener;
 
-use env_logger;
-
 use rust_http_server::connection_handler::run;
 
 fn main() {

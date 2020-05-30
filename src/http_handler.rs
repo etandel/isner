@@ -35,9 +35,9 @@ fn write_response(resp: &Response<()>, writer: &mut dyn Write) -> Result<(), Box
         resp.status().as_str(),
         resp.status().canonical_reason().unwrap_or("UNKNOWN")
     )?;
-    write!(writer, "{}\r\n", "Connection: close")?;
-    write!(writer, "{}\r\n", "Content-type: text/plain")?;
-    write!(writer, "{}\r\n", "Content-length: 0")?;
+    write!(writer, "Connection: close\r\n")?;
+    write!(writer, "Content-type: text/plain\r\n")?;
+    write!(writer, "Content-length: 0\r\n")?;
     write!(writer, "\r\n")?;
     Ok(())
 }
