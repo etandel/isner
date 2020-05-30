@@ -1,10 +1,10 @@
 use std::io;
 use std::net::{TcpListener, TcpStream};
-use std::thread;
 
 use anyhow::Error;
 use fehler::throws;
 use log::{debug, info};
+use threadpool::ThreadPool;
 
 use crate::http_handler::{handle, Response};
 
@@ -34,8 +34,9 @@ fn uber_handle_stream(stream: io::Result<TcpStream>) {
 }
 
 pub fn run(listener: TcpListener) {
+    let pool = ThreadPool::new(10); // TODO dehardcode
     for stream in listener.incoming() {
-        thread::spawn(move || {
+        pool.execute(move || {
             uber_handle_stream(stream);
         });
     }
