@@ -13,7 +13,7 @@ const DEFAULT_CONCURRENCY: &str = "10";
 
 fn build_args<'a>() -> App<'a, 'a> {
     App::new("isner")
-        .version("0.0.1")
+        .version("0.0.1-alpha.1")
         .author("Elias Tandel <elias.tandel@gmail.com>")
         .about("Simple file server in rust")
         .arg(
