@@ -1,4 +1,5 @@
 use std::net::{TcpListener, ToSocketAddrs};
+use std::path::Path;
 
 use anyhow::{Context, Error};
 use clap::{App, Arg};
@@ -6,6 +7,7 @@ use fehler::throws;
 use threadpool::ThreadPool;
 
 use isner::connection_handler::run;
+use isner::file_handler::FileHandler;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: &str = "8000";
@@ -68,5 +70,7 @@ fn main() {
         ThreadPool::new(pool_size)
     };
 
-    run(listener, pool);
+    let handler = FileHandler::new(Path::new("/tmp/www/").to_owned());
+
+    run(listener, pool, handler);
 }
