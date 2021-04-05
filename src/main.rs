@@ -41,6 +41,14 @@ fn build_args<'a>() -> App<'a, 'a> {
                 .long("concurrency")
                 .default_value(DEFAULT_CONCURRENCY),
         )
+        .arg(
+            Arg::with_name("directory")
+                .help("Root directory")
+                .short("d")
+                .long("directory")
+                .value_name("DIR")
+                .required(true)
+        )
 }
 
 #[throws]
@@ -70,7 +78,8 @@ fn main() {
         ThreadPool::new(pool_size)
     };
 
-    let handler = FileHandler::new(Path::new("/tmp/www/").to_owned());
+    let root_dir = matches.value_of("directory").unwrap();
+    let handler = FileHandler::new(Path::new(root_dir).to_owned());
 
     run(listener, pool, handler);
 }
