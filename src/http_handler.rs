@@ -1,31 +1,26 @@
 use std::io::{BufRead, Write};
+use std::sync::Arc;
 
 use anyhow::Error;
 use fehler::throws;
-use http::method::Method;
+use http::status::StatusCode;
 
 use super::parser::{parse_request, Request};
 
-pub type Response = http::response::Response<()>;
+pub type Response = http::response::Response<Vec<u8>>;
 
-fn handle_request(req: &Request) -> Response {
-    let builder = Response::builder();
-
-    builder
-        .status(if req.method() == Method::GET {
-            200
-        } else {
-            405
-        })
-        .body(())
-        .unwrap()
+pub trait Handler: Sync + Send  {
+    fn handle_request(&self, request: &Request) -> Response;
 }
 
-fn get_response(reader: &mut dyn BufRead) -> Response {
+fn get_response(reader: &mut dyn BufRead, handler: Arc<impl Handler>) -> Response {
     let res = parse_request(reader);
     match res {
-        Ok(req) => handle_request(&req),
-        Err(_) => Response::builder().status(400).body(()).unwrap(),
+        Ok(req) => handler.handle_request(&req),
+        Err(_) => http::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(vec![])
+            .unwrap(),
     }
 }
 
@@ -37,15 +32,28 @@ fn write_response(resp: &Response, writer: &mut dyn Write) {
         resp.status().as_str(),
         resp.status().canonical_reason().unwrap_or("UNKNOWN")
     )?;
-    write!(writer, "Connection: close\r\n")?;
-    write!(writer, "Content-type: text/plain\r\n")?;
-    write!(writer, "Content-length: 0\r\n")?;
+    let headers = resp.headers();
+    for (header_name, value) in headers {
+        if !value.is_empty() {
+            writer.write_all(header_name.as_ref())?;
+            writer.write_all(b": ")?;
+            writer.write_all(value.as_bytes())?;
+            writer.write_all(b"\r\n")?;
+        }
+    }
+    write!(writer, "Connection: close \r\n")?;
     write!(writer, "\r\n")?;
+
+    writer.write_all(resp.body())?;
 }
 
 #[throws]
-pub fn handle(reader: &mut dyn BufRead, writer: &mut dyn Write) -> Response {
-    let response = get_response(reader);
+pub fn handle(
+    reader: &mut dyn BufRead,
+    writer: &mut dyn Write,
+    handler: Arc<impl Handler>,
+) -> Response {
+    let response = get_response(reader, handler);
     write_response(&response, writer)?;
     response
 }
@@ -68,55 +76,56 @@ mod tests {
         }
     }
 
+    struct OkEmptyHandler {}
+    impl Handler for OkEmptyHandler {
+        fn handle_request(&self, _request: &Request) -> Response {
+            http::Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-length", "0")
+                .body(vec![])
+                .unwrap()
+        }
+    }
+
     fn mock_reader(raw_request: &str) -> BufReader<&[u8]> {
         BufReader::new(raw_request.as_bytes())
     }
 
     #[test]
-    #[throws]
-    fn handle_request_ok() {
-        let request = Request::builder().method(Method::GET).uri("/").body(())?;
-        let got = handle_request(&request);
-        assert_eq!(got.status(), 200);
-    }
-
-    #[test]
-    #[throws]
-    fn handle_request_method_not_allowed() {
-        let request = Request::builder().method(Method::POST).uri("/").body(())?;
-        let got = handle_request(&request);
-        assert_eq!(got.status(), 405);
-    }
-
-    #[test]
     fn get_response_ok() {
-        let got = get_response(&mut mock_reader("GET / HTTP/1.0\r\n\r\n"));
-        assert_eq!(got.status(), 200);
+        let h = Arc::new(OkEmptyHandler {});
+        let got = get_response(&mut mock_reader("GET / HTTP/1.0\r\n\r\n"), h);
+        assert_eq!(got.status(), StatusCode::OK);
     }
 
     #[test]
     fn get_response_with_parse_error() {
-        let got = get_response(&mut mock_reader(""));
-        assert_eq!(got.status(), 400);
+        let h = Arc::new(OkEmptyHandler {});
+        let got = get_response(&mut mock_reader(""), h);
+        assert_eq!(got.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]
     #[throws]
     fn write_response_ok() {
-        let resp = Response::builder().status(200).body(())?;
+        let resp = http::Response::builder()
+            .status(StatusCode::OK)
+            .body(vec![])?;
         let mut writer = Vec::new();
         write_response(&resp, &mut writer)?;
         let got = String::from_utf8(writer)?;
         assert_eq!(
             &got,
-            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
+            "HTTP/1.1 200 OK\r\nConnection: close \r\n\r\n"
         );
     }
 
     #[test]
     #[throws]
     fn write_response_err() {
-        let resp = Response::builder().status(200).body(())?;
+        let resp = http::Response::builder()
+            .status(StatusCode::OK)
+            .body(vec![])?;
         let mut writer = ErrWriter();
         let got = write_response(&resp, &mut writer);
         assert!(got.is_err(), "Error expected");
@@ -125,25 +134,29 @@ mod tests {
     #[test]
     #[throws]
     fn handle_ok() {
+        let h = Arc::new(OkEmptyHandler {});
+
         let raw_request = "GET / HTTP/1.0\r\n\r\n";
 
         let mut writer = Vec::new();
-        let resp = handle(&mut mock_reader(&raw_request), &mut writer)?;
+        let resp = handle(&mut mock_reader(&raw_request), &mut writer, h)?;
         let got = String::from_utf8(writer)?;
 
+        assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             &got,
-            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/plain\r\nContent-length: 0\r\n\r\n"
+            "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nConnection: close \r\n\r\n"
         );
-        assert_eq!(resp.status(), 200);
     }
 
     #[test]
     fn handle_write_err() {
+        let h = Arc::new(OkEmptyHandler{});
+
         let raw_request = "GET / HTTP/1.0\r\n\r\n";
 
         let mut writer = ErrWriter();
-        let got = handle(&mut mock_reader(&raw_request), &mut writer);
+        let got = handle(&mut mock_reader(&raw_request), &mut writer, h);
         assert!(got.is_err(), "Error expected");
     }
 }

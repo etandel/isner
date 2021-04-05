@@ -1,4 +1,5 @@
 use std::net::{TcpListener, ToSocketAddrs};
+use std::path::Path;
 
 use anyhow::{Context, Error};
 use clap::{App, Arg};
@@ -6,6 +7,7 @@ use fehler::throws;
 use threadpool::ThreadPool;
 
 use isner::connection_handler::run;
+use isner::file_handler::FileHandler;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: &str = "8000";
@@ -39,6 +41,14 @@ fn build_args<'a>() -> App<'a, 'a> {
                 .long("concurrency")
                 .default_value(DEFAULT_CONCURRENCY),
         )
+        .arg(
+            Arg::with_name("directory")
+                .help("Root directory")
+                .short("d")
+                .long("directory")
+                .value_name("DIR")
+                .required(true)
+        )
 }
 
 #[throws]
@@ -68,5 +78,8 @@ fn main() {
         ThreadPool::new(pool_size)
     };
 
-    run(listener, pool);
+    let root_dir = matches.value_of("directory").unwrap();
+    let handler = FileHandler::new(Path::new(root_dir).to_owned());
+
+    run(listener, pool, handler);
 }
